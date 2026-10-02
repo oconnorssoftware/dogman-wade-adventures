@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dog Man & Wade Adventures</title>
+  <style>
+    :root{
+      --panel:#ffffff;
+      --card:#f6f8fb;
+      --border:#c9d2df;
+      --text:#1f2937;
+      --muted:#667085;
+      --accent:#2f80ed;
+      --accent-bg:#e8f2ff;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:#eef3f8;color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button{font:inherit}
+    .app{max-width:1100px;margin:0 auto;padding:18px}
+    .hidden{display:none!important}
+    .topbar{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px}
+    .title{font-size:22px;font-weight:800}
+    .subtitle,.muted{font-size:14px;color:var(--muted)}
+    .missionGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+    .missionCard,.btn,.control,.hud{border:2px solid var(--border);background:var(--panel);color:var(--text);border-radius:14px}
+    .missionCard{padding:14px;text-align:left;min-height:110px;cursor:pointer}
+    .missionCard:hover,.btn:hover,.control:hover{transform:translateY(-1px)}
+    .hudGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:12px 0}
+    .hud{padding:9px 10px}
+    .hud div{font-size:12px;color:var(--muted);margin-bottom:2px}
+    .gameWrap{position:relative;overflow:hidden;border:2px solid var(--border);border-radius:18px;background:#dff3ff;box-shadow:0 14px 34px rgba(0,0,0,.16)}
+    canvas{display:block;width:100%;height:auto;touch-action:none}
+    .btn{padding:9px 13px;cursor:pointer}
+    .dialog,.complete{position:absolute;left:14px;right:14px;bottom:14px;background:rgba(255,255,255,.96);border:3px solid #26313a;border-radius:16px;padding:14px;z-index:9;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+    .complete{top:50%;bottom:auto;transform:translateY(-50%);text-align:center}
+    .notice{position:absolute;top:14px;left:50%;transform:translateX(-50%);padding:10px 16px;border:3px solid #111;border-radius:13px;background:#ffd84e;color:#111;font-weight:900;z-index:8;text-align:center}
+    .controls{display:grid;grid-template-columns:160px 1fr;gap:12px;align-items:center;margin-top:12px}
+    .moveGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .actionGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+    .control{min-height:64px;padding:10px;font-weight:800;cursor:pointer;touch-action:none}
+    .move{background:#1f2937;color:white;border-color:#1f2937;font-size:24px}
+    .watermark{position:absolute;left:14px;top:12px;z-index:4;pointer-events:none;opacity:.94;transform:rotate(-2deg);transform-origin:top left;filter:drop-shadow(0 3px 0 rgba(0,0,0,.7));font-weight:1000;line-height:.92;white-space:nowrap}
+    .logoTop{display:flex;align-items:flex-end;gap:3px}
+    .logoDog{font-size:28px;color:#ffd52c;-webkit-text-stroke:3px #111;letter-spacing:-1px}
+    .logoAnd{font-size:16px;color:white;-webkit-text-stroke:2px #111;margin-bottom:2px}
+    .logoWade{font-size:26px;color:#35b9ff;-webkit-text-stroke:3px #111;letter-spacing:-1px}
+    .logoRibbon{display:inline-block;margin-left:47px;margin-top:2px;background:#e5332a;color:#fff;border:3px solid #111;border-radius:7px;padding:2px 11px 3px;font-size:14px;letter-spacing:.4px;transform:rotate(-2deg)}
+    @media(max-width:780px){
+      .missionGrid,.hudGrid{grid-template-columns:1fr 1fr}
+      .controls{grid-template-columns:1fr}
+      .actionGrid{grid-template-columns:1fr 1fr}
+    }
+  </style>
+</head>
+<body>
+<div id="app" class="app">
+  <section id="missionSelect">
+    <div class="title">Dog Man & Wade Adventures</div>
+    <div class="subtitle">Visual overhaul build — all missions unlocked for debugging.</div>
+    <div class="missionGrid">
+      <button class="missionCard" data-mission="1"><b>Mission 1</b><div style="font-weight:800;margin-top:6px">The Missing Comic</div><div class="muted" style="margin-top:8px">Reveal clues and catch the thief.</div></button>
+      <button class="missionCard" data-mission="2"><b>Mission 2</b><div style="font-weight:800;margin-top:6px">Park Panic!</div><div class="muted" style="margin-top:8px">Debug mission.</div></button>
+      <button class="missionCard" data-mission="3"><b>Mission 3</b><div style="font-weight:800;margin-top:6px">Rooftop Rescue</div><div class="muted" style="margin-top:8px">Debug mission.</div></button>
+    </div>
+  </section>
+
+  <section id="gameUI" class="hidden">
+    <div class="topbar">
+      <div>
+        <div id="missionTitle" class="title"></div>
+        <div id="objective" class="subtitle"></div>
+      </div>
+      <button id="missionMenu" class="btn">☰ Missions</button>
+    </div>
+
+    <div class="hudGrid">
+      <div class="hud"><div>Active</div><b id="heroName">Dog Man</b></div>
+      <div class="hud"><div>Health</div><b id="health">❤️❤️❤️❤️❤️</b></div>
+      <div class="hud"><div>Clues</div><b id="clueCount">0 / 3</b></div>
+      <div class="hud"><div>Coins</div><b id="coinCount">0</b></div>
+      <div class="hud"><div>Enemies</div><b id="enemyCount">0</b></div>
+    </div>
+
+    <div class="gameWrap">
+      <canvas id="game" width="960" height="540"></canvas>
+      <div class="watermark" aria-hidden="true">
+        <div class="logoTop"><span class="logoDog">DOGMAN</span><span class="logoAnd">&amp;</span><span class="logoWade">WADE</span></div>
+        <div class="logoRibbon">ADVENTURES</div>
+      </div>
+      <div id="sniffNotice" class="notice hidden">👃 CLUE REVEALED!</div>
+      <div id="chaseNotice" class="notice hidden">🚨 FINAL CHASE!<div style="font-size:12px;margin-top:4px">Follow the arrow and catch the thief!</div></div>
+      <div id="dialog" class="dialog hidden"><b id="speaker"></b><div id="dialogText" style="margin-top:6px"></div><button id="continue" class="btn" style="margin-top:10px">Continue →</button></div>
+      <div id="complete" class="complete hidden"><div style="font-size:24px;font-weight:900">🎉 Mission Complete!</div><div id="completeText" style="margin-top:8px"></div><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px"><button id="replay" class="btn">↻ Replay</button><button id="nextMission" class="btn">Next Mission →</button><button id="chooseMission" class="btn">Mission Select</button></div></div>
+    </div>
+
+    <div class="controls">
+      <div class="moveGrid"><button id="left" class="control move">◀</button><button id="right" class="control move">▶</button></div>
+      <div class="actionGrid"><button id="jump" class="control">⬆ Jump</button><button id="ability" class="control">👃 Sniff</button><button id="attack" class="control">💥 Attack</button><button id="switchHero" class="control">🔄 Switch</button></div>
+    </div>
+    <div class="subtitle" style="margin-top:8px">Keyboard: A/D or arrows move · W/↑ jump · Space attack · F ability · Q switch.</div>
+  </section>
+</div>
+
+<script>
+(function(){
+  const R=document.getElementById('app'),menu=document.getElementById('missionSelect'),UI=document.getElementById('gameUI'),C=document.getElementById('game'),g=C.getContext('2d');
+  const W=C.width,H=C.height,TITLE=document.getElementById('missionTitle'),OBJ=document.getElementById('objective'),HN=document.getElementById('heroName'),HP=document.getElementById('health'),CC=document.getElementById('clueCount'),CO=document.getElementById('coinCount'),EC=document.getElementById('enemyCount'),DB=document.getElementById('dialog'),DS=document.getElementById('speaker'),DT=document.getElementById('dialogText'),CONT=document.getElementById('continue'),COMP=document.getElementById('complete'),CT=document.getElementById('completeText'),NEXT=document.getElementById('nextMission'),SN=document.getElementById('sniffNotice'),CHASE=document.getElementById('chaseNotice');
+  const keys={left:0,right:0};let mission=1,hero='dog',hp=5,coins=0,clues=0,paused=0,finished=0,finalChase=0,t=0,camX=0,invuln=0,sniffTimer=0,dogAttackFx=0,dogAttackDir=1;
+  const dog={x:120,y:300,vx:0,vy:0,w:70,h:92,onGround:0},wade={x:55,y:310,vx:0,vy:0,w:54,h:82,onGround:0};
+  let platforms=[],pickups=[],enemies=[],webShots=[],bursts=[],dust=[],goal={x:0,y:0};
+  const missions={
+    1:{title:'The Missing Comic',objective:'Use Super Sniff to reveal and collect all 3 hidden clues.',ending:'Dog Man and Wade caught the thief and recovered the missing comic!',length:3300},
+    2:{title:'Park Panic!',objective:'Cross the park and reach the rescue point.',ending:'The puppy is safe!',length:3050},
+    3:{title:'Rooftop Rescue',objective:'Cross the rooftops and reach the rescue point.',ending:'The rooftop rescue succeeds!',length:3550}
+  };
+
+  function active(){return hero==='dog'?dog:wade}
+  function partner(){return hero==='dog'?wade:dog}
+  function hud(){HN.textContent=hero==='dog'?'Dog Man':'Wade';HP.textContent='❤️'.repeat(Math.max(0,hp));CC.textContent=clues+' / 3';CO.textContent=coins;EC.textContent=enemies.filter(e=>e.alive).length;document.getElementById('ability').textContent=hero==='dog'?'👃 Super Sniff':'🕸️ Web Shot'}
+  function dialog(a,b,cb){paused=1;DS.textContent=a;DT.textContent=b;DB.classList.remove('hidden');CONT.onclick=function(){DB.classList.add('hidden');paused=0;if(cb)cb()}}
+  function flash(el,ms){el.classList.remove('hidden');setTimeout(function(){el.classList.add('hidden')},ms||1500)}
+  function startFinalChase(){if(finalChase)return;finalChase=1;sniffTimer=0;OBJ.textContent='All clues found! Follow the yellow arrow and catch the thief.';flash(CHASE,2600)}
+
+  function setup(n){
+    mission=n;hero='dog';hp=5;coins=0;clues=0;paused=0;finished=0;finalChase=n===1?0:1;camX=0;webShots=[];bursts=[];dust=[];dogAttackFx=0;invuln=0;sniffTimer=0;
+    dog.x=120;dog.y=300;dog.vx=dog.vy=0;wade.x=55;wade.y=310;wade.vx=wade.vy=0;
+    platforms=[{x:0,y:430,w:560,h:110},{x:650,y:365,w:320,h:175},{x:1050,y:425,w:380,h:115},{x:1530,y:335,w:350,h:205},{x:1980,y:395,w:370,h:145},{x:2450,y:305,w:370,h:235},{x:2920,y:385,w:500,h:155}];
+    pickups=[];enemies=[];
+    if(n===1)[780,1730,2580].forEach(function(x,i){pickups.push({x:x,y:220-i%2*48,type:'clue',got:0,revealed:0})});
+    for(let x=370;x<missions[n].length;x+=255)pickups.push({x:x,y:250-(x%510===0?45:0),type:'coin',got:0,revealed:1});
+    [1180,1610,2200,2730].forEach(function(x,i){enemies.push({x:x,y:270,vx:i%2?.8:-.8,min:x-100,max:x+100,hp:2,alive:1,hit:0})});
+    goal={x:missions[n].length-230,y:225};TITLE.textContent='Mission '+n+': '+missions[n].title;OBJ.textContent=missions[n].objective;COMP.classList.add('hidden');menu.classList.add('hidden');UI.classList.remove('hidden');hud();
+    dialog('Chief',n===1?'The thief dropped three hidden clues. Use Dog Man’s Super Sniff to reveal them. Find all three, then track him down.':'Work together and reach the end of the level!',function(){});
+  }
+
+  function switchHero(){if(!paused&&!finished){hero=hero==='dog'?'wade':'dog';hud()}}
+  function jump(){const a=active();if(!paused&&!finished&&a.onGround){a.vy=-13;a.onGround=0;dust.push({x:a.x+a.w/2,y:a.y+a.h,life:18,r:7})}}
+  function ability(){if(paused||finished)return;if(hero==='dog'){if(finalChase){OBJ.textContent='The trail is complete — follow the yellow arrow to the thief!';return}sniffTimer=240;const hidden=pickups.filter(function(p){return p.type==='clue'&&!p.got&&!p.revealed});if(hidden.length){hidden.sort(function(a,b){return Math.abs(a.x-dog.x)-Math.abs(b.x-dog.x)});hidden[0].revealed=1;flash(SN,1500);OBJ.textContent='Clue revealed! Follow the glowing scent trail.'}else OBJ.textContent='No hidden clues remain. Collect the clues you already revealed.'}else shootWeb()}
+  function attack(){if(paused||finished)return;if(hero==='wade'){shootWeb();return}dogAttackDir=Math.sign(dog.vx)||dogAttackDir||1;dogAttackFx=18;dog.x+=dogAttackDir*12;let hit=0;for(const e of enemies){if(!e.alive)continue;const ex=e.x+18,ey=e.y+20,dx=ex-(dog.x+dog.w/2),dy=ey-(dog.y+dog.h/2);if(Math.abs(dx)<105&&Math.abs(dy)<78&&Math.sign(dx||dogAttackDir)===dogAttackDir){e.hp-=2;e.hit=14;hit=1;bursts.push({x:ex,y:ey,life:18,type:'dog'});if(e.hp<=0)e.alive=0}}if(!hit)bursts.push({x:dog.x+dog.w/2+dogAttackDir*64,y:dog.y+40,life:10,type:'swipe'});hud()}
+  function shootWeb(){const dir=Math.sign(wade.vx)||1;webShots.push({x:wade.x+wade.w/2+dir*24,y:wade.y+34,vx:dir*12,life:58,trail:[]})}
+  function collide(p){p.onGround=0;for(const pl of platforms)if(p.x+p.w>pl.x&&p.x<pl.x+pl.w&&p.y+p.h<=pl.y+20&&p.y+p.h+p.vy>=pl.y&&p.vy>=0){p.y=pl.y-p.h;p.vy=0;p.onGround=1}}
+  function hurt(){if(invuln)return;hp--;invuln=90;hud();if(hp<=0)dialog('Try Again','The team ran out of health.',function(){setup(mission)})}
+
+  function update(){
+    if(paused||finished||UI.classList.contains('hidden'))return;
+    const a=active(),f=partner(),dir=(keys.right?1:0)-(keys.left?1:0);a.vx=dir*4.7;if(dir&&hero==='dog')dogAttackDir=dir;a.x+=a.vx;a.vy+=.68;a.y+=a.vy;collide(a);
+    if(a.onGround&&Math.abs(a.vx)>1&&t%8===0)dust.push({x:a.x+a.w/2-dir*12,y:a.y+a.h-2,life:14,r:5});
+    if(a.y>590){hurt();a.y=120;a.vy=0}
+    const tx=a.x-(dir||1)*64,ty=a.y+7;f.x+=(tx-f.x)*.13;f.y+=(ty-f.y)*.13;f.vx=a.vx;
+    for(const e of enemies){if(!e.alive)continue;e.x+=e.vx;if(e.x<e.min||e.x>e.max)e.vx*=-1;if(e.hit)e.hit--;if(Math.abs(e.x+18-(a.x+a.w/2))<38&&Math.abs(e.y+20-(a.y+a.h/2))<60)hurt()}
+    for(const s of webShots){s.trail.push({x:s.x,y:s.y});if(s.trail.length>10)s.trail.shift();s.x+=s.vx;s.life--;for(const e of enemies){if(!e.alive)continue;if(s.x>=e.x-7&&s.x<=e.x+44&&s.y>=e.y-24&&s.y<=e.y+55){e.hp--;e.hit=14;s.life=0;bursts.push({x:s.x,y:s.y,life:18,type:'web'});if(e.hp<=0)e.alive=0;break}}}
+    webShots=webShots.filter(function(s){return s.life>0});for(const b of bursts)b.life--;bursts=bursts.filter(function(b){return b.life>0});for(const d of dust){d.life--;d.y-=.25;d.r+=.15}dust=dust.filter(function(d){return d.life>0});
+    for(const p of pickups){if(p.got||!p.revealed)continue;if(Math.abs(p.x-(a.x+a.w/2))<35&&Math.abs(p.y-(a.y+a.h/2))<54){p.got=1;if(p.type==='coin')coins++;else{clues++;if(clues<3)OBJ.textContent='Clue '+clues+' of 3 found. Use Super Sniff to find the next one.';if(clues===3)startFinalChase()}}}
+    if(invuln)invuln--;if(sniffTimer)sniffTimer--;if(dogAttackFx)dogAttackFx--;
+    const canFinish=mission===1?finalChase:true;if(canFinish&&a.x>goal.x-90&&!finished){finished=1;CT.textContent=missions[mission].ending;NEXT.classList.toggle('hidden',mission===3);COMP.classList.remove('hidden')}
+    camX+=(a.x-270-camX)*.08;camX=Math.max(0,Math.min(missions[mission].length-W,camX));hud();
+  }
+
+  function cloud(x,y,s){g.fillStyle='rgba(255,255,255,.95)';g.beginPath();g.arc(x,y,30*s,0,7);g.arc(x+32*s,y-12*s,38*s,0,7);g.arc(x+72*s,y,27*s,0,7);g.fill()}
+  function building(x,base,w,h,c,lit){g.fillStyle=c;g.fillRect(x,base-h,w,h);g.fillStyle='rgba(255,255,255,.09)';g.fillRect(x+5,base-h+4,w-10,5);g.fillStyle=lit?'rgba(255,222,130,.72)':'rgba(196,222,240,.35)';for(let yy=base-h+18;yy<base-16;yy+=26)for(let xx=x+12;xx<x+w-10;xx+=23)g.fillRect(xx,yy,9,12)}
+  function skyline(speed,base,alpha,near){g.save();g.globalAlpha=alpha;for(let i=0;i<16;i++){const x=i*150-(camX*speed%150),w=80+(i%3)*16,h=(near?130:90)+(i%5)*30;building(x,base,w,h,near?['#566b89','#647b9a','#775f74'][i%3]:['#9aaac0','#899db7','#a9b5c7'][i%3],near)}g.restore()}
+  function bridge(){const ox=395-(camX*.09%650),y=330;g.strokeStyle='#5e6680';g.lineWidth=11;g.beginPath();g.moveTo(ox,y);g.lineTo(ox+390,y);g.stroke();g.lineWidth=7;g.beginPath();g.moveTo(ox+60,y);g.lineTo(ox+125,228);g.lineTo(ox+190,y);g.moveTo(ox+205,y);g.lineTo(ox+270,215);g.lineTo(ox+340,y);g.stroke();g.lineWidth=2.5;for(let i=0;i<12;i++){g.beginPath();g.moveTo(ox+62+i*24,y);g.lineTo(ox+125+(i%6)*24,235);g.stroke()}}
+  function river(){const rg=g.createLinearGradient(0,340,0,H);rg.addColorStop(0,'#3499df');rg.addColorStop(1,'#1e7dbd');g.fillStyle=rg;g.fillRect(0,340,W,H-340);g.fillStyle='rgba(255,255,255,.22)';for(let y=360;y<H;y+=23)g.fillRect(0,y,W,2);g.fillStyle='rgba(150,225,255,.18)';for(let i=0;i<10;i++){g.beginPath();g.ellipse(i*110-(camX*.13%110),400+(i%4)*21,48,7,0,0,7);g.fill()}}
+  function boat(x,y){g.save();g.translate(x,y);g.fillStyle='#eee';g.strokeStyle='#35536c';g.lineWidth=2;g.beginPath();g.moveTo(-30,0);g.lineTo(30,0);g.lineTo(20,13);g.lineTo(-23,13);g.closePath();g.fill();g.stroke();g.fillStyle='#397ba6';g.fillRect(-12,-13,24,13);g.fillStyle='#fff';g.beginPath();g.moveTo(0,-13);g.lineTo(0,-35);g.lineTo(19,-13);g.closePath();g.fill();g.stroke();g.restore()}
+  function helicopter(x,y){g.save();g.translate(x,y);g.fillStyle='#d84738';g.strokeStyle='#283541';g.lineWidth=2;g.beginPath();g.ellipse(0,0,34,15,0,0,7);g.fill();g.stroke();g.fillStyle='#e8f6ff';g.fillRect(5,-9,15,10);g.fillStyle='#d84738';g.fillRect(-47,-4,21,7);g.fillRect(-52,-15,6,18);g.strokeStyle='#333';g.lineWidth=3;g.beginPath();g.moveTo(-38,-18);g.lineTo(38,-18);g.stroke();g.fillStyle='rgba(255,255,200,.32)';g.beginPath();g.moveTo(20,10);g.lineTo(48,65);g.lineTo(-5,65);g.closePath();g.fill();g.restore()}
+  function background(){const sky=g.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#2d9ff1');sky.addColorStop(.45,'#8bd3ff');sky.addColorStop(1,'#e7f6ff');g.fillStyle=sky;g.fillRect(0,0,W,H);cloud(80-(camX*.02%300),78,1.15);cloud(380-(camX*.018%500),120,.8);cloud(690-(camX*.025%430),78,1);skyline(.04,335,.55,0);skyline(.09,355,.8,0);skyline(.15,375,1,1);bridge();river();boat(510-(camX*.18%1150),420);helicopter(820-(camX*.025%1500),95)}
+
+  function hazard(x,y,w){g.fillStyle='#e7ad20';g.fillRect(x,y,w,12);g.strokeStyle='#1c2228';g.lineWidth=8;for(let xx=x-20;xx<x+w+20;xx+=30){g.beginPath();g.moveTo(xx,y+12);g.lineTo(xx+16,y);g.stroke()}}
+  function brickWall(x,y,w,h){g.fillStyle='#9c5546';g.fillRect(x,y,w,h);g.fillStyle='#bb6a58';for(let yy=y+18,row=0;yy<y+h;yy+=25,row++)for(let xx=x+(row%2?26:0);xx<x+w;xx+=52)g.fillRect(xx,yy,43,15)}
+  function vent(x,y){g.fillStyle='#78848f';g.strokeStyle='#4e5961';g.lineWidth=2;g.fillRect(x,y,48,27);g.strokeRect(x,y,48,27);g.fillStyle='#4b5660';for(let i=0;i<5;i++)g.fillRect(x+7,y+5+i*4,34,2)}
+  function pipe(x,y,h){g.strokeStyle='#39434a';g.lineWidth=8;g.beginPath();g.moveTo(x,y);g.lineTo(x,y-h);g.stroke();g.fillStyle='#59636a';g.fillRect(x-7,y-h-6,14,7)}
+  function tower(x,y){g.fillStyle='#5b4536';g.strokeStyle='#2d2521';g.lineWidth=3;g.fillRect(x-34,y,68,42);g.strokeRect(x-34,y,68,42);g.beginPath();g.ellipse(x,y,34,11,0,0,7);g.fill();g.stroke();g.beginPath();g.ellipse(x,y+42,34,10,0,0,7);g.fill();g.stroke();g.strokeStyle='#38302a';g.lineWidth=6;g.beginPath();g.moveTo(x-25,y+40);g.lineTo(x-25,y+105);g.moveTo(x+25,y+40);g.lineTo(x+25,y+105);g.moveTo(x-25,y+55);g.lineTo(x+25,y+105);g.moveTo(x+25,y+55);g.lineTo(x-25,y+105);g.stroke()}
+  function ivy(x,y){g.fillStyle='#3d8a49';for(let i=0;i<12;i++){g.beginPath();g.arc(x+(i%3)*11,y+i*8,9,0,7);g.fill()}}
+  function mural(x,y,type){g.fillStyle='#e5ddc5';g.strokeStyle='#675d56';g.lineWidth=2;g.fillRect(x,y,130,82);g.strokeRect(x,y,130,82);g.fillStyle='#445667';g.font='bold 14px sans-serif';if(type===0){g.fillText('BE KIND',x+12,y+24);g.fillText('HELP OTHERS',x+12,y+45);g.fillText('BRIGHTER CITY',x+12,y+67)}else{g.fillText('GOOD DOGS',x+12,y+24);g.fillText('STRONGER',x+12,y+45);g.fillText('CITIES',x+12,y+67)}}
+  function rooftop(pl,i){const x=pl.x-camX;brickWall(x,pl.y,pl.w,pl.h);g.fillStyle='#555f69';g.fillRect(x-6,pl.y-7,pl.w+12,21);g.fillStyle='#a8b0b9';g.fillRect(x,pl.y-7,pl.w,8);hazard(x+pl.w*.62,pl.y-7,Math.min(140,pl.w*.26));if(i%2===0)vent(x+80,pl.y-34);if(i===0){mural(x+20,pl.y-118,0);pipe(x+190,pl.y,72);ivy(x+15,pl.y-15)}if(i===1){g.fillStyle='#59636b';g.fillRect(x+245,pl.y-90,10,90);for(let yy=pl.y-82;yy<pl.y-8;yy+=13)g.fillRect(x+240,yy,22,5)}if(i===2){tower(x+245,pl.y-138);vent(x+60,pl.y-34)}if(i===3){pipe(x+60,pl.y,95);pipe(x+100,pl.y,62);ivy(x+300,pl.y-10)}if(i===4){mural(x+150,pl.y-112,1);vent(x+45,pl.y-34)}if(i===5){g.fillStyle='#59636b';g.fillRect(x+55,pl.y-105,10,105);g.fillRect(x+85,pl.y-105,10,105);for(let yy=pl.y-98;yy<pl.y-8;yy+=14)g.fillRect(x+55,yy,40,5);pipe(x+290,pl.y,78)}if(i===6){ivy(x+30,pl.y-10);vent(x+275,pl.y-34)}}
+
+  function hatLogo(cx,cy){g.save();g.translate(cx,cy);g.fillStyle='#ffd338';g.strokeStyle='#111';g.lineWidth=2;g.beginPath();g.moveTo(0,-9);g.lineTo(6,-2);g.lineTo(12,-7);g.lineTo(10,6);g.lineTo(-10,6);g.lineTo(-12,-7);g.lineTo(-6,-2);g.closePath();g.fill();g.stroke();g.restore()}
+  function crownCoin(x,y){g.save();g.translate(x,y);g.fillStyle='#ffdd34';g.strokeStyle='#a66a00';g.lineWidth=3;g.beginPath();g.arc(0,0,17,0,7);g.fill();g.stroke();g.fillStyle='#efad00';g.beginPath();g.arc(0,0,12,0,7);g.fill();g.fillStyle='#ffe978';g.beginPath();g.moveTo(-8,5);g.lineTo(-6,-5);g.lineTo(0,-1);g.lineTo(6,-6);g.lineTo(8,5);g.closePath();g.fill();g.strokeStyle='#9b6500';g.lineWidth=1.5;g.stroke();g.restore()}
+
+  function dogDraw(){const x=dog.x-camX,y=dog.y,bob=Math.sin(t*.18)*2,run=Math.sin(t*.35)*5;g.save();g.translate(x,y+bob);g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(35,91,34,9,0,0,7);g.fill();g.strokeStyle='#111';g.lineWidth=3.5;g.lineJoin='round';g.fillStyle='#1f68ae';g.beginPath();g.roundRect(17,38,42,40,10);g.fill();g.stroke();g.fillStyle='#f5c52c';g.beginPath();g.moveTo(38,48);g.lineTo(42,54);g.lineTo(50,55);g.lineTo(44,61);g.lineTo(46,69);g.lineTo(38,64);g.lineTo(30,69);g.lineTo(32,61);g.lineTo(26,55);g.lineTo(34,54);g.closePath();g.fill();g.stroke();g.fillStyle='#15528d';g.beginPath();g.roundRect(8,73+run*.15,20,18,6);g.fill();g.stroke();g.beginPath();g.roundRect(46,73-run*.15,20,18,6);g.fill();g.stroke();g.fillStyle='#c58a50';g.beginPath();g.ellipse(37,26,31,25,0,0,7);g.fill();g.stroke();g.fillStyle='#8c5933';g.beginPath();g.ellipse(9,29,11,25,-.35,0,7);g.fill();g.stroke();g.beginPath();g.ellipse(65,28,11,25,.35,0,7);g.fill();g.stroke();g.fillStyle='#efc184';g.beginPath();g.ellipse(42,34,21,13,0,0,7);g.fill();g.stroke();g.fillStyle='#111';g.beginPath();g.arc(54,31,5,0,7);g.fill();g.beginPath();g.arc(28,21,3,0,7);g.arc(42,21,3,0,7);g.fill();g.strokeStyle='#70472b';g.lineWidth=2.3;g.beginPath();g.arc(39,39,9,.2,Math.PI-.15);g.stroke();g.fillStyle='#2381d6';g.strokeStyle='#111';g.lineWidth=3.5;g.beginPath();g.roundRect(8,-1,56,13,5);g.fill();g.stroke();g.beginPath();g.roundRect(20,-14,34,14,4);g.fillStyle='#175c9b';g.fill();g.stroke();hatLogo(37,-7);if(dogAttackFx){const d=dogAttackDir;g.strokeStyle='#fff';g.lineWidth=8;g.beginPath();g.arc(38+d*44,42,33,d>0?-1.1:Math.PI-.9,d>0?1.1:Math.PI+.9);g.stroke();g.fillStyle='#ffe04a';g.beginPath();g.moveTo(38+d*68,42);g.lineTo(38+d*49,30);g.lineTo(38+d*49,54);g.closePath();g.fill()}g.restore()}
+
+  function wadeDraw(){const x=wade.x-camX,y=wade.y,bob=Math.sin(t*.19+.7)*2,run=Math.sin(t*.34+.6)*4;g.save();g.translate(x,y+bob);g.fillStyle='rgba(0,0,0,.15)';g.beginPath();g.ellipse(27,81,27,8,0,0,7);g.fill();g.strokeStyle='#111';g.lineWidth=3;g.lineJoin='round';g.fillStyle='#d82f2f';g.beginPath();g.roundRect(11,29,34,30,8);g.fill();g.stroke();g.fillStyle='#f04d45';g.fillRect(13,31,30,7);g.fillStyle='#226fbd';g.beginPath();g.moveTo(10,55);g.lineTo(27,55);g.lineTo(25,72);g.lineTo(10,72);g.closePath();g.fill();g.stroke();g.beginPath();g.moveTo(29,55);g.lineTo(45,55);g.lineTo(44,72);g.lineTo(29,72);g.closePath();g.fill();g.stroke();g.fillStyle='#c99770';g.beginPath();g.roundRect(11,69+run*.15,9,15,4);g.fill();g.stroke();g.beginPath();g.roundRect(35,69-run*.15,9,15,4);g.fill();g.stroke();g.fillStyle='#1b2129';g.beginPath();g.roundRect(5,79+run*.2,20,9,5);g.fill();g.stroke();g.beginPath();g.roundRect(31,79-run*.2,20,9,5);g.fill();g.stroke();g.fillStyle='#1d84d6';g.fillRect(9,81+run*.2,11,3);g.fillRect(35,81-run*.2,11,3);g.fillStyle='#c99770';g.beginPath();g.roundRect(3,34,9,16,5);g.fill();g.stroke();g.beginPath();g.roundRect(44,34,9,16,5);g.fill();g.stroke();g.beginPath();g.arc(28,13,22,0,7);g.fill();g.stroke();g.fillStyle='#e6bf3e';g.beginPath();g.moveTo(6,10);g.quadraticCurveTo(10,-12,27,-12);g.quadraticCurveTo(44,-11,48,7);g.lineTo(39,2);g.lineTo(35,10);g.lineTo(29,2);g.lineTo(23,10);g.lineTo(17,3);g.lineTo(11,10);g.closePath();g.fill();g.stroke();g.fillStyle='#fff';g.beginPath();g.ellipse(21,13,5,4,0,0,7);g.ellipse(35,13,5,4,0,0,7);g.fill();g.fillStyle='#4d9cda';g.beginPath();g.arc(21,13,2.5,0,7);g.arc(35,13,2.5,0,7);g.fill();g.fillStyle='#111';g.beginPath();g.arc(21,13,1.1,0,7);g.arc(35,13,1.1,0,7);g.fill();g.strokeStyle='#7b4633';g.lineWidth=2;g.beginPath();g.arc(28,20,8,.18,Math.PI-.18);g.stroke();g.restore()}
+
+  function enemyDraw(e){const x=e.x-camX;g.save();g.translate(x,e.y);g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(21,55,22,7,0,0,7);g.fill();g.strokeStyle='#111';g.lineWidth=3;g.fillStyle=e.hit?'#c75f67':'#31343a';g.beginPath();g.roundRect(4,12,36,38,7);g.fill();g.stroke();g.fillStyle='#eee';for(let yy=17;yy<45;yy+=9)g.fillRect(7,yy,30,4);g.fillStyle='#d3a079';g.beginPath();g.arc(22,2,19,0,7);g.fill();g.stroke();g.fillStyle='#222';g.beginPath();g.arc(22,-2,20,Math.PI,0);g.fill();g.fillRect(7,-1,30,5);g.fillStyle='#111';g.beginPath();g.arc(15,3,2,0,7);g.arc(29,3,2,0,7);g.fill();g.restore()}
+  function thiefDraw(){if(!finalChase)return;const x=goal.x-camX,y=goal.y+40;g.save();g.translate(x,y);g.fillStyle='rgba(255,222,60,.24)';g.beginPath();g.arc(22,24,49+Math.sin(t*.12)*5,0,7);g.fill();g.strokeStyle='#ffe040';g.lineWidth=5;g.beginPath();g.arc(22,24,42+Math.sin(t*.12)*3,0,7);g.stroke();g.fillStyle='#31343a';g.strokeStyle='#111';g.lineWidth=3;g.beginPath();g.roundRect(4,13,36,38,7);g.fill();g.stroke();g.fillStyle='#eee';for(let yy=18;yy<46;yy+=9)g.fillRect(7,yy,30,4);g.fillStyle='#d3a079';g.beginPath();g.arc(22,3,19,0,7);g.fill();g.stroke();g.fillStyle='#222';g.beginPath();g.arc(22,-1,20,Math.PI,0);g.fill();g.fillStyle='#a87a2b';g.beginPath();g.arc(-10,30,19,0,7);g.fill();g.stroke();g.fillStyle='#111';g.font='bold 13px sans-serif';g.textAlign='center';g.fillText('THIEF',22,-25);g.restore();g.textAlign='left'}
+
+  function webDraw(){for(const s of webShots){for(let i=1;i<s.trail.length;i++){g.strokeStyle='rgba(220,249,255,'+(i/s.trail.length)+')';g.lineWidth=4;g.beginPath();g.moveTo(s.trail[i-1].x-camX,s.trail[i-1].y);g.lineTo(s.trail[i].x-camX,s.trail[i].y);g.stroke()}g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.arc(s.x-camX,s.y,7,0,7);g.stroke();for(let k=0;k<4;k++){const a=k*Math.PI/2;g.beginPath();g.moveTo(s.x-camX,s.y);g.lineTo(s.x-camX+Math.cos(a)*10,s.y+Math.sin(a)*10);g.stroke()}}for(const b of bursts){const r=6+(18-b.life)*1.4;g.save();g.translate(b.x-camX,b.y);g.strokeStyle=b.type==='dog'?'#ffe14f':'#fff';g.lineWidth=4;for(let i=0;i<6;i++){const a=i*Math.PI/3;g.beginPath();g.moveTo(0,0);g.lineTo(Math.cos(a)*r,Math.sin(a)*r);g.stroke()}g.restore()}}
+  function drawDust(){for(const d of dust){g.globalAlpha=d.life/18;g.fillStyle='#eee7d8';g.beginPath();g.arc(d.x-camX,d.y,d.r,0,7);g.fill()}g.globalAlpha=1}
+  function scentTrail(){if(!sniffTimer||finalChase)return;const target=pickups.find(function(p){return p.type==='clue'&&!p.got&&p.revealed});if(!target)return;g.strokeStyle='#1d252c';g.lineWidth=14;g.setLineDash([10,20]);g.beginPath();g.moveTo(dog.x-camX+30,dog.y+34);g.quadraticCurveTo((dog.x+target.x)/2-camX,target.y-90,target.x-camX,target.y);g.stroke();g.strokeStyle='#ffd84e';g.lineWidth=7;g.stroke();g.setLineDash([]);for(let i=1;i<=7;i++){const f=i/8,sx=dog.x-camX+30,sy=dog.y+34,cx=(dog.x+target.x)/2-camX,cy=target.y-90,tx=target.x-camX,ty=target.y,px=(1-f)*(1-f)*sx+2*(1-f)*f*cx+f*f*tx,py=(1-f)*(1-f)*sy+2*(1-f)*f*cy+f*f*ty;g.fillStyle='#ffd84e';g.beginPath();g.arc(px,py,7+Math.sin(t*.15+i)*2,0,7);g.fill()}}
+  function finalArrow(){if(!finalChase||finished)return;const a=active(),right=goal.x>a.x,x=right?W-64:64;g.save();g.translate(x,95);g.fillStyle='#ffe14f';g.strokeStyle='#111';g.lineWidth=4;g.beginPath();if(right){g.moveTo(26,0);g.lineTo(-16,-24);g.lineTo(-16,24)}else{g.moveTo(-26,0);g.lineTo(16,-24);g.lineTo(16,24)}g.closePath();g.fill();g.stroke();g.fillStyle='#111';g.font='bold 12px sans-serif';g.textAlign='center';g.fillText('THIEF',0,48);g.restore();g.textAlign='left'}
+
+  function render(){t++;background();platforms.forEach(function(p,i){rooftop(p,i)});pickups.forEach(function(p){if(p.got||!p.revealed)return;const x=p.x-camX;if(p.type==='coin')crownCoin(x,p.y);else{g.save();g.translate(x,p.y);g.rotate(-.08);g.fillStyle='#22b9ee';g.strokeStyle='#153b55';g.lineWidth=3;g.fillRect(-17,-24,34,48);g.strokeRect(-17,-24,34,48);g.fillStyle='#fff';g.font='bold 10px sans-serif';g.textAlign='center';g.fillText('CLUE!',0,-3);g.fillStyle='#17334a';g.beginPath();g.arc(0,11,4,0,7);g.fill();g.restore();g.textAlign='left'}});enemies.forEach(function(e){if(e.alive)enemyDraw(e)});thiefDraw();dogDraw();wadeDraw();webDraw();drawDust();scentTrail();finalArrow();const a=active();g.strokeStyle='#ffe14f';g.lineWidth=5;g.beginPath();g.ellipse(a.x-camX+a.w/2,a.y+a.h+8,35,10,0,0,7);g.stroke();g.fillStyle='#ffe14f';g.beginPath();g.moveTo(a.x-camX+a.w/2,a.y-20);g.lineTo(a.x-camX+a.w/2-10,a.y-37);g.lineTo(a.x-camX+a.w/2+10,a.y-37);g.closePath();g.fill()}
+  function loop(){update();if(!UI.classList.contains('hidden'))render();requestAnimationFrame(loop)}
+  function hold(el,k){el.addEventListener('pointerdown',function(e){e.preventDefault();keys[k]=1;try{el.setPointerCapture(e.pointerId)}catch(_){}});['pointerup','pointercancel','lostpointercapture'].forEach(function(v){el.addEventListener(v,function(){keys[k]=0})})}
+
+  hold(document.getElementById('left'),'left');hold(document.getElementById('right'),'right');
+  document.getElementById('jump').addEventListener('click',jump);document.getElementById('ability').addEventListener('click',ability);document.getElementById('attack').addEventListener('click',attack);document.getElementById('switchHero').addEventListener('click',switchHero);
+  document.querySelectorAll('[data-mission]').forEach(function(b){b.addEventListener('click',function(){setup(+b.dataset.mission)})});
+  document.getElementById('missionMenu').addEventListener('click',function(){UI.classList.add('hidden');menu.classList.remove('hidden')});
+  document.getElementById('chooseMission').addEventListener('click',function(){UI.classList.add('hidden');menu.classList.remove('hidden')});
+  document.getElementById('replay').addEventListener('click',function(){setup(mission)});
+  NEXT.addEventListener('click',function(){setup(Math.min(3,mission+1))});
+  R.addEventListener('keydown',function(e){if(['INPUT','TEXTAREA'].includes(e.target.tagName))return;const k=e.key.toLowerCase();if(k==='a'||k==='arrowleft')keys.left=1;if(k==='d'||k==='arrowright')keys.right=1;if((k==='w'||k==='arrowup')&&!e.repeat)jump();if(k==='q'&&!e.repeat)switchHero();if(k==='f'&&!e.repeat)ability();if(k===' '&&!e.repeat){e.preventDefault();attack()}});
+  R.addEventListener('keyup',function(e){const k=e.key.toLowerCase();if(k==='a'||k==='arrowleft')keys.left=0;if(k==='d'||k==='arrowright')keys.right=0});
+  R.tabIndex=0;hud();loop();
+})();
+</script>
+</body>
+</html>
