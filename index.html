@@ -17,7 +17,8 @@
     *{box-sizing:border-box}
     body{margin:0;background:#eef3f8;color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
     button{font:inherit}
-    .app{max-width:1100px;margin:0 auto;padding:18px}
+    .app{max-width:1100px;margin:0 auto;padding:18px;user-select:none;-webkit-user-select:none}
+    button,canvas,.control,.btn{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
     .hidden{display:none!important}
     .topbar{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px}
     .title{font-size:22px;font-weight:800}
@@ -26,9 +27,10 @@
     .missionCard,.btn,.control,.hud{border:2px solid var(--border);background:var(--panel);color:var(--text);border-radius:14px}
     .missionCard{padding:14px;text-align:left;min-height:110px;cursor:pointer}
     .missionCard:hover,.btn:hover,.control:hover{transform:translateY(-1px)}
-    .hudGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:12px 0}
-    .hud{padding:9px 10px}
-    .hud div{font-size:12px;color:var(--muted);margin-bottom:2px}
+    .hudGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:8px 0}
+    .hud{min-width:0;padding:6px 4px;text-align:center}
+    .hud div{font-size:10px;line-height:1;color:var(--muted);margin-bottom:2px;white-space:nowrap;overflow:hidden}
+    .hud b{display:block;font-size:12px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:clip}
     .gameWrap{position:relative;overflow:hidden;border:2px solid var(--border);border-radius:18px;background:#dff3ff;box-shadow:0 14px 34px rgba(0,0,0,.16)}
     canvas{display:block;width:100%;height:auto;touch-action:none}
     .btn{padding:9px 13px;cursor:pointer}
@@ -38,7 +40,7 @@
     .controls{display:grid;grid-template-columns:160px 1fr;gap:12px;align-items:center;margin-top:12px}
     .moveGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     .actionGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-    .control{min-height:64px;padding:10px;font-weight:800;cursor:pointer;touch-action:none}
+    .control{min-height:64px;padding:10px;font-weight:800;cursor:pointer;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
     .move{background:#1f2937;color:white;border-color:#1f2937;font-size:24px}
     .watermark{position:absolute;left:14px;top:12px;z-index:4;pointer-events:none;opacity:.94;transform:rotate(-2deg);transform-origin:top left;filter:drop-shadow(0 3px 0 rgba(0,0,0,.7));font-weight:1000;line-height:.92;white-space:nowrap}
     .logoTop{display:flex;align-items:flex-end;gap:3px}
@@ -47,9 +49,18 @@
     .logoWade{font-size:26px;color:#35b9ff;-webkit-text-stroke:3px #111;letter-spacing:-1px}
     .logoRibbon{display:inline-block;margin-left:47px;margin-top:2px;background:#e5332a;color:#fff;border:3px solid #111;border-radius:7px;padding:2px 11px 3px;font-size:14px;letter-spacing:.4px;transform:rotate(-2deg)}
     @media(max-width:780px){
-      .missionGrid,.hudGrid{grid-template-columns:1fr 1fr}
-      .controls{grid-template-columns:1fr}
-      .actionGrid{grid-template-columns:1fr 1fr}
+      .app{padding:6px}
+      .missionGrid{grid-template-columns:1fr 1fr}
+      .hudGrid{grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;margin:6px 0}
+      .hud{padding:4px 2px;border-width:1px;border-radius:8px}
+      .hud div{font-size:8px}
+      .hud b{font-size:10px}
+      .controls{grid-template-columns:112px 1fr;gap:6px;margin-top:8px}
+      .moveGrid{gap:5px}
+      .actionGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+      .control{min-height:52px;padding:5px;font-size:13px}
+      .move{font-size:24px}
+      .watermark{transform:rotate(-2deg) scale(.72);transform-origin:top left;left:8px;top:7px}
     }
   </style>
 </head>
@@ -75,9 +86,9 @@
     </div>
 
     <div class="hudGrid">
-      <div class="hud"><div>Active</div><b id="heroName">Dog Man</b></div>
-      <div class="hud"><div>Health</div><b id="health">❤️❤️❤️❤️❤️</b></div>
-      <div class="hud"><div>Clues</div><b id="clueCount">0 / 3</b></div>
+      <div class="hud"><div>Hero</div><b id="heroName">DM</b></div>
+      <div class="hud"><div>HP</div><b id="health">♥ 5</b></div>
+      <div class="hud"><div>Clues</div><b id="clueCount">0/3</b></div>
       <div class="hud"><div>Coins</div><b id="coinCount">0</b></div>
       <div class="hud"><div>Enemies</div><b id="enemyCount">0</b></div>
     </div>
@@ -117,7 +128,7 @@
 
   function active(){return hero==='dog'?dog:wade}
   function partner(){return hero==='dog'?wade:dog}
-  function hud(){HN.textContent=hero==='dog'?'Dog Man':'Wade';HP.textContent='❤️'.repeat(Math.max(0,hp));CC.textContent=clues+' / 3';CO.textContent=coins;EC.textContent=enemies.filter(e=>e.alive).length;document.getElementById('ability').textContent=hero==='dog'?'👃 Super Sniff':'🕸️ Web Shot'}
+  function hud(){HN.textContent=hero==='dog'?'DM':'Wade';HP.textContent='♥ '+Math.max(0,hp);CC.textContent=clues+'/3';CO.textContent=coins;EC.textContent=enemies.filter(e=>e.alive).length;document.getElementById('ability').textContent=hero==='dog'?'👃 Sniff':'🕸️ Web'}
   function dialog(a,b,cb){paused=1;DS.textContent=a;DT.textContent=b;DB.classList.remove('hidden');CONT.onclick=function(){DB.classList.add('hidden');paused=0;if(cb)cb()}}
   function flash(el,ms){el.classList.remove('hidden');setTimeout(function(){el.classList.add('hidden')},ms||1500)}
   function startFinalChase(){if(finalChase)return;finalChase=1;sniffTimer=0;OBJ.textContent='All clues found! Follow the yellow arrow and catch the thief.';flash(CHASE,2600)}
@@ -192,9 +203,18 @@
 
   function render(){t++;background();platforms.forEach(function(p,i){rooftop(p,i)});pickups.forEach(function(p){if(p.got||!p.revealed)return;const x=p.x-camX;if(p.type==='coin')crownCoin(x,p.y);else{g.save();g.translate(x,p.y);g.rotate(-.08);g.fillStyle='#22b9ee';g.strokeStyle='#153b55';g.lineWidth=3;g.fillRect(-17,-24,34,48);g.strokeRect(-17,-24,34,48);g.fillStyle='#fff';g.font='bold 10px sans-serif';g.textAlign='center';g.fillText('CLUE!',0,-3);g.fillStyle='#17334a';g.beginPath();g.arc(0,11,4,0,7);g.fill();g.restore();g.textAlign='left'}});enemies.forEach(function(e){if(e.alive)enemyDraw(e)});thiefDraw();dogDraw();wadeDraw();webDraw();drawDust();scentTrail();finalArrow();const a=active();g.strokeStyle='#ffe14f';g.lineWidth=5;g.beginPath();g.ellipse(a.x-camX+a.w/2,a.y+a.h+8,35,10,0,0,7);g.stroke();g.fillStyle='#ffe14f';g.beginPath();g.moveTo(a.x-camX+a.w/2,a.y-20);g.lineTo(a.x-camX+a.w/2-10,a.y-37);g.lineTo(a.x-camX+a.w/2+10,a.y-37);g.closePath();g.fill()}
   function loop(){update();if(!UI.classList.contains('hidden'))render();requestAnimationFrame(loop)}
-  function hold(el,k){el.addEventListener('pointerdown',function(e){e.preventDefault();keys[k]=1;try{el.setPointerCapture(e.pointerId)}catch(_){}});['pointerup','pointercancel','lostpointercapture'].forEach(function(v){el.addEventListener(v,function(){keys[k]=0})})}
+  function hold(el,k){
+    el.addEventListener('pointerdown',function(e){e.preventDefault();keys[k]=1;try{el.setPointerCapture(e.pointerId)}catch(_){}},{passive:false});
+    ['pointerup','pointercancel','lostpointercapture'].forEach(function(v){el.addEventListener(v,function(e){if(e)e.preventDefault();keys[k]=0},{passive:false})});
+    el.addEventListener('contextmenu',function(e){e.preventDefault()});
+    el.addEventListener('selectstart',function(e){e.preventDefault()});
+  }
 
   hold(document.getElementById('left'),'left');hold(document.getElementById('right'),'right');
+  document.querySelectorAll('button').forEach(function(b){
+    b.addEventListener('contextmenu',function(e){e.preventDefault()});
+    b.addEventListener('selectstart',function(e){e.preventDefault()});
+  });
   document.getElementById('jump').addEventListener('click',jump);document.getElementById('ability').addEventListener('click',ability);document.getElementById('attack').addEventListener('click',attack);document.getElementById('switchHero').addEventListener('click',switchHero);
   document.querySelectorAll('[data-mission]').forEach(function(b){b.addEventListener('click',function(){setup(+b.dataset.mission)})});
   document.getElementById('missionMenu').addEventListener('click',function(){UI.classList.add('hidden');menu.classList.remove('hidden')});
