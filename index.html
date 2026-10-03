@@ -117,7 +117,7 @@
 (function(){
   const R=document.getElementById('app'),menu=document.getElementById('missionSelect'),UI=document.getElementById('gameUI'),C=document.getElementById('game'),g=C.getContext('2d');
   const W=C.width,H=C.height,TITLE=document.getElementById('missionTitle'),OBJ=document.getElementById('objective'),HN=document.getElementById('heroName'),HP=document.getElementById('health'),CC=document.getElementById('clueCount'),CO=document.getElementById('coinCount'),EC=document.getElementById('enemyCount'),DB=document.getElementById('dialog'),DS=document.getElementById('speaker'),DT=document.getElementById('dialogText'),CONT=document.getElementById('continue'),COMP=document.getElementById('complete'),CT=document.getElementById('completeText'),NEXT=document.getElementById('nextMission'),SN=document.getElementById('sniffNotice'),CHASE=document.getElementById('chaseNotice');
-  const keys={left:0,right:0};let mission=1,hero='dog',hp=5,coins=0,clues=0,paused=0,finished=0,finalChase=0,t=0,camX=0,invuln=0,sniffTimer=0,dogAttackFx=0,dogAttackDir=1;
+  const keys={left:0,right:0};let mission=1,hero='dog',hp=5,coins=0,clues=0,paused=0,finished=0,finalChase=0,t=0,camX=0,invuln=0,sniffTimer=0,dogAttackFx=0,dogAttackDir=1,wadeFacing=1;
   const dog={x:120,y:300,vx:0,vy:0,w:70,h:92,onGround:0},wade={x:55,y:310,vx:0,vy:0,w:54,h:82,onGround:0};
   let platforms=[],pickups=[],enemies=[],webShots=[],bursts=[],dust=[],goal={x:0,y:0};
   const missions={
@@ -134,7 +134,7 @@
   function startFinalChase(){if(finalChase)return;finalChase=1;sniffTimer=0;OBJ.textContent='All clues found! Follow the yellow arrow and catch the thief.';flash(CHASE,2600)}
 
   function setup(n){
-    mission=n;hero='dog';hp=5;coins=0;clues=0;paused=0;finished=0;finalChase=n===1?0:1;camX=0;webShots=[];bursts=[];dust=[];dogAttackFx=0;invuln=0;sniffTimer=0;
+    mission=n;hero='dog';hp=5;coins=0;clues=0;paused=0;finished=0;finalChase=n===1?0:1;camX=0;webShots=[];bursts=[];dust=[];dogAttackFx=0;invuln=0;sniffTimer=0;wadeFacing=1;
     dog.x=120;dog.y=300;dog.vx=dog.vy=0;wade.x=55;wade.y=310;wade.vx=wade.vy=0;
     platforms=[{x:0,y:430,w:560,h:110},{x:650,y:365,w:320,h:175},{x:1050,y:425,w:380,h:115},{x:1530,y:335,w:350,h:205},{x:1980,y:395,w:370,h:145},{x:2450,y:305,w:370,h:235},{x:2920,y:385,w:500,h:155}];
     pickups=[];enemies=[];
@@ -149,13 +149,13 @@
   function jump(){const a=active();if(!paused&&!finished&&a.onGround){a.vy=-13;a.onGround=0;dust.push({x:a.x+a.w/2,y:a.y+a.h,life:18,r:7})}}
   function ability(){if(paused||finished)return;if(hero==='dog'){if(finalChase){OBJ.textContent='The trail is complete — follow the yellow arrow to the thief!';return}sniffTimer=240;const hidden=pickups.filter(function(p){return p.type==='clue'&&!p.got&&!p.revealed});if(hidden.length){hidden.sort(function(a,b){return Math.abs(a.x-dog.x)-Math.abs(b.x-dog.x)});hidden[0].revealed=1;flash(SN,1500);OBJ.textContent='Clue revealed! Follow the glowing scent trail.'}else OBJ.textContent='No hidden clues remain. Collect the clues you already revealed.'}else shootWeb()}
   function attack(){if(paused||finished)return;if(hero==='wade'){shootWeb();return}dogAttackDir=Math.sign(dog.vx)||dogAttackDir||1;dogAttackFx=18;dog.x+=dogAttackDir*12;let hit=0;for(const e of enemies){if(!e.alive)continue;const ex=e.x+18,ey=e.y+20,dx=ex-(dog.x+dog.w/2),dy=ey-(dog.y+dog.h/2);if(Math.abs(dx)<105&&Math.abs(dy)<78&&Math.sign(dx||dogAttackDir)===dogAttackDir){e.hp-=2;e.hit=14;hit=1;bursts.push({x:ex,y:ey,life:18,type:'dog'});if(e.hp<=0)e.alive=0}}if(!hit)bursts.push({x:dog.x+dog.w/2+dogAttackDir*64,y:dog.y+40,life:10,type:'swipe'});hud()}
-  function shootWeb(){const dir=Math.sign(wade.vx)||1;webShots.push({x:wade.x+wade.w/2+dir*24,y:wade.y+34,vx:dir*12,life:58,trail:[]})}
+  function shootWeb(){const dir=wadeFacing;webShots.push({x:wade.x+wade.w/2+dir*24,y:wade.y+34,vx:dir*12,life:58,trail:[]})}
   function collide(p){p.onGround=0;for(const pl of platforms)if(p.x+p.w>pl.x&&p.x<pl.x+pl.w&&p.y+p.h<=pl.y+20&&p.y+p.h+p.vy>=pl.y&&p.vy>=0){p.y=pl.y-p.h;p.vy=0;p.onGround=1}}
   function hurt(){if(invuln)return;hp--;invuln=90;hud();if(hp<=0)dialog('Try Again','The team ran out of health.',function(){setup(mission)})}
 
   function update(){
     if(paused||finished||UI.classList.contains('hidden'))return;
-    const a=active(),f=partner(),dir=(keys.right?1:0)-(keys.left?1:0);a.vx=dir*4.7;if(dir&&hero==='dog')dogAttackDir=dir;a.x+=a.vx;a.vy+=.68;a.y+=a.vy;collide(a);
+    const a=active(),f=partner(),dir=(keys.right?1:0)-(keys.left?1:0);a.vx=dir*4.7;if(dir&&hero==='dog')dogAttackDir=dir;if(dir&&hero==='wade')wadeFacing=dir;a.x+=a.vx;a.vy+=.68;a.y+=a.vy;collide(a);
     if(a.onGround&&Math.abs(a.vx)>1&&t%8===0)dust.push({x:a.x+a.w/2-dir*12,y:a.y+a.h-2,life:14,r:5});
     if(a.y>590){hurt();a.y=120;a.vy=0}
     const tx=a.x-(dir||1)*64,ty=a.y+7;f.x+=(tx-f.x)*.13;f.y+=(ty-f.y)*.13;f.vx=a.vx;
