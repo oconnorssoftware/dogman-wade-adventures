@@ -119,7 +119,7 @@
   const W=C.width,H=C.height,TITLE=document.getElementById('missionTitle'),OBJ=document.getElementById('objective'),HN=document.getElementById('heroName'),HP=document.getElementById('health'),CC=document.getElementById('clueCount'),CO=document.getElementById('coinCount'),EC=document.getElementById('enemyCount'),DB=document.getElementById('dialog'),DS=document.getElementById('speaker'),DT=document.getElementById('dialogText'),CONT=document.getElementById('continue'),COMP=document.getElementById('complete'),CT=document.getElementById('completeText'),NEXT=document.getElementById('nextMission'),SN=document.getElementById('sniffNotice'),CHASE=document.getElementById('chaseNotice');
   const keys={left:0,right:0};let mission=1,hero='dog',hp=5,coins=0,clues=0,paused=0,finished=0,finalChase=0,t=0,camX=0,invuln=0,sniffTimer=0,dogAttackFx=0,dogAttackDir=1,wadeFacing=1;
   const dog={x:120,y:300,vx:0,vy:0,w:70,h:92,onGround:0},wade={x:55,y:310,vx:0,vy:0,w:54,h:82,onGround:0};
-  let platforms=[],pickups=[],enemies=[],webShots=[],bursts=[],dust=[],goal={x:0,y:0};
+  let platforms=[],pickups=[],enemies=[],webShots=[],enemyShots=[],bursts=[],dust=[],goal={x:0,y:0};
   const missions={
     1:{title:'The Missing Comic',objective:'Use Super Sniff to reveal and collect all 3 hidden clues.',ending:'Dog Man and Wade caught the thief and recovered the missing comic!',length:3300},
     2:{title:'Park Panic!',objective:'Defeat the park troublemakers, then rescue the lost puppy.',ending:'The park is safe and the puppy is rescued!',length:4600},
@@ -139,11 +139,11 @@
   }
   function spawnEnemy(x,type,hpValue,speed,range){
     const top=platformTopAt(x);
-    enemies.push({x:x,y:(top===null?325:top-55),vx:speed,min:x-range,max:x+range,hp:hpValue,maxHp:hpValue,alive:1,hit:0,type:type||'city'});
+    enemies.push({x:x,y:(top===null?325:top-55),vx:speed,min:x-range,max:x+range,hp:hpValue,maxHp:hpValue,alive:1,hit:0,type:type||'city',shotCooldown:45+Math.floor(Math.random()*70),aiming:0});
   }
 
   function setup(n){
-    mission=n;hero='dog';hp=5;coins=0;clues=0;paused=0;finished=0;finalChase=0;camX=0;webShots=[];bursts=[];dust=[];dogAttackFx=0;invuln=0;sniffTimer=0;wadeFacing=1;
+    mission=n;hero='dog';hp=5;coins=0;clues=0;paused=0;finished=0;finalChase=0;camX=0;webShots=[];enemyShots=[];bursts=[];dust=[];dogAttackFx=0;invuln=0;sniffTimer=0;wadeFacing=1;
     dog.x=120;dog.y=300;dog.vx=dog.vy=0;wade.x=55;wade.y=310;wade.vx=wade.vy=0;
     pickups=[];enemies=[];
 
@@ -172,7 +172,7 @@
     const intro=n===1
       ?'The thief dropped three hidden clues. Use Dog Man’s Super Sniff to reveal them. Find all three, then track him down.'
       :n===2
-        ?'Troublemakers have taken over the park and a puppy is trapped at the far end. Clear them out, then make the rescue!'
+        ?'Troublemakers have taken over the park and a puppy is trapped at the far end. Watch out — they will throw balls at you when you get close. Clear them out, then make the rescue!'
         :'This rescue goes high above River City. Fight across the rooftops, defeat the boss guarding the last roof, and reach the rescue beacon!';
     dialog('Chief',intro,function(){});
   }
@@ -191,7 +191,36 @@
     if(a.onGround&&Math.abs(a.vx)>1&&t%8===0)dust.push({x:a.x+a.w/2-dir*12,y:a.y+a.h-2,life:14,r:5});
     if(a.y>590){hurt();a.y=120;a.vy=0}
     const tx=a.x-(dir||1)*64,ty=a.y+7;f.x+=(tx-f.x)*.13;f.y+=(ty-f.y)*.13;f.vx=a.vx;
-    for(const e of enemies){if(!e.alive)continue;e.x+=e.vx;if(e.x<e.min||e.x>e.max)e.vx*=-1;if(e.hit)e.hit--;if(Math.abs(e.x+18-(a.x+a.w/2))<38&&Math.abs(e.y+20-(a.y+a.h/2))<60)hurt()}
+    for(const e of enemies){
+      if(!e.alive)continue;
+      e.x+=e.vx;
+      if(e.x<e.min||e.x>e.max)e.vx*=-1;
+      if(e.hit)e.hit--;
+      if(e.aiming)e.aiming--;
+      if(Math.abs(e.x+18-(a.x+a.w/2))<38&&Math.abs(e.y+20-(a.y+a.h/2))<60)hurt();
+
+      if(mission===2&&e.type==='park'){
+        if(e.shotCooldown>0)e.shotCooldown--;
+        const sx=e.x+22,sy=e.y+21,tx=a.x+a.w/2,ty=a.y+a.h*.45,dx=tx-sx,dy=ty-sy,dist=Math.hypot(dx,dy);
+        if(dist<390&&Math.abs(dy)<150&&e.shotCooldown<=0){
+          const speed=5.4,ux=dx/(dist||1),uy=dy/(dist||1);
+          enemyShots.push({x:sx,y:sy,vx:ux*speed,vy:uy*speed,life:125,spin:0});
+          e.shotCooldown=95+Math.floor(Math.random()*55);
+          e.aiming=18;
+        }
+      }
+    }
+
+    for(const s of enemyShots){
+      s.x+=s.vx;s.y+=s.vy;s.spin+=.3;s.life--;
+      const ax=a.x,ay=a.y;
+      if(s.x>ax-7&&s.x<ax+a.w+7&&s.y>ay-7&&s.y<ay+a.h+7){
+        s.life=0;
+        bursts.push({x:s.x,y:s.y,life:14,type:'enemyShot'});
+        hurt();
+      }
+    }
+    enemyShots=enemyShots.filter(function(s){return s.life>0&&s.x>-80&&s.x<missions[mission].length+80&&s.y>-80&&s.y<H+100});
     for(const s of webShots){s.trail.push({x:s.x,y:s.y});if(s.trail.length>10)s.trail.shift();s.x+=s.vx;s.life--;for(const e of enemies){if(!e.alive)continue;if(s.x>=e.x-7&&s.x<=e.x+44&&s.y>=e.y-24&&s.y<=e.y+55){e.hp--;e.hit=14;s.life=0;bursts.push({x:s.x,y:s.y,life:18,type:'web'});if(e.hp<=0)e.alive=0;break}}}
     webShots=webShots.filter(function(s){return s.life>0});for(const b of bursts)b.life--;bursts=bursts.filter(function(b){return b.life>0});for(const d of dust){d.life--;d.y-=.25;d.r+=.15}dust=dust.filter(function(d){return d.life>0});
     for(const p of pickups){if(p.got||!p.revealed)continue;if(Math.abs(p.x-(a.x+a.w/2))<35&&Math.abs(p.y-(a.y+a.h/2))<54){p.got=1;if(p.type==='coin')coins++;else{clues++;if(clues<3)OBJ.textContent='Clue '+clues+' of 3 found. Use Super Sniff to find the next one.';if(clues===3)startFinalChase()}}}
@@ -320,6 +349,15 @@
     g.fillStyle=body;g.beginPath();g.roundRect(e.type==='boss'?0:4,e.type==='boss'?8:12,e.type==='boss'?44:36,e.type==='boss'?44:38,7);g.fill();g.stroke();
     g.fillStyle=stripe;for(let yy=17;yy<45;yy+=9)g.fillRect(7,yy,30,4);
     g.fillStyle='#d3a079';g.beginPath();g.arc(22,2,e.type==='boss'?21:19,0,7);g.fill();g.stroke();g.fillStyle='#222';g.beginPath();g.arc(22,-2,e.type==='boss'?22:20,Math.PI,0);g.fill();g.fillRect(7,-1,30,5);g.fillStyle='#111';g.beginPath();g.arc(15,3,2,0,7);g.arc(29,3,2,0,7);g.fill();
+    if(e.type==='park'&&e.aiming){
+      const d=(active().x+active().w/2)>(e.x+22)?1:-1;
+      g.save();g.translate(22,27);g.scale(d,1);
+      g.strokeStyle='#111';g.lineWidth=5;g.lineCap='round';
+      g.beginPath();g.moveTo(8,5);g.lineTo(25,-3);g.stroke();
+      g.fillStyle='#f06a3a';g.strokeStyle='#111';g.lineWidth=2;
+      g.beginPath();g.arc(31,-5,7,0,7);g.fill();g.stroke();
+      g.restore();
+    }
     if(e.type==='boss'){g.fillStyle='#111';g.font='bold 11px sans-serif';g.textAlign='center';g.fillText('ROOFTOP BOSS',22,-28);g.fillStyle='#222';g.fillRect(-2,61,48,6);g.fillStyle='#ffd34d';g.fillRect(-2,61,48*(Math.max(0,e.hp)/e.maxHp),6);g.textAlign='left'}
     g.restore()}
   function thiefDraw(){if(mission!==1||!finalChase)return;const x=goal.x-camX,y=goal.y+40;g.save();g.translate(x,y);g.fillStyle='rgba(255,222,60,.24)';g.beginPath();g.arc(22,24,49+Math.sin(t*.12)*5,0,7);g.fill();g.strokeStyle='#ffe040';g.lineWidth=5;g.beginPath();g.arc(22,24,42+Math.sin(t*.12)*3,0,7);g.stroke();g.fillStyle='#31343a';g.strokeStyle='#111';g.lineWidth=3;g.beginPath();g.roundRect(4,13,36,38,7);g.fill();g.stroke();g.fillStyle='#eee';for(let yy=18;yy<46;yy+=9)g.fillRect(7,yy,30,4);g.fillStyle='#d3a079';g.beginPath();g.arc(22,3,19,0,7);g.fill();g.stroke();g.fillStyle='#222';g.beginPath();g.arc(22,-1,20,Math.PI,0);g.fill();g.fillStyle='#a87a2b';g.beginPath();g.arc(-10,30,19,0,7);g.fill();g.stroke();g.fillStyle='#111';g.font='bold 13px sans-serif';g.textAlign='center';g.fillText('THIEF',22,-25);g.restore();g.textAlign='left'}
@@ -345,12 +383,23 @@
     g.restore();g.textAlign='left';
   }
 
-  function webDraw(){for(const s of webShots){for(let i=1;i<s.trail.length;i++){g.strokeStyle='rgba(220,249,255,'+(i/s.trail.length)+')';g.lineWidth=4;g.beginPath();g.moveTo(s.trail[i-1].x-camX,s.trail[i-1].y);g.lineTo(s.trail[i].x-camX,s.trail[i].y);g.stroke()}g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.arc(s.x-camX,s.y,7,0,7);g.stroke();for(let k=0;k<4;k++){const a=k*Math.PI/2;g.beginPath();g.moveTo(s.x-camX,s.y);g.lineTo(s.x-camX+Math.cos(a)*10,s.y+Math.sin(a)*10);g.stroke()}}for(const b of bursts){const r=6+(18-b.life)*1.4;g.save();g.translate(b.x-camX,b.y);g.strokeStyle=(b.type==='bite'||b.type==='biteMiss')?'#ffe14f':'#fff';g.lineWidth=4;for(let i=0;i<6;i++){const a=i*Math.PI/3;g.beginPath();g.moveTo(0,0);g.lineTo(Math.cos(a)*r,Math.sin(a)*r);g.stroke()}g.restore()}}
+  function enemyShotsDraw(){
+    for(const s of enemyShots){
+      g.save();g.translate(s.x-camX,s.y);g.rotate(s.spin);
+      g.fillStyle='#f06a3a';g.strokeStyle='#111';g.lineWidth=2.5;
+      g.beginPath();g.arc(0,0,7,0,7);g.fill();g.stroke();
+      g.strokeStyle='#ffd34d';g.lineWidth=2;
+      g.beginPath();g.arc(0,0,3.2,0,7);g.stroke();
+      g.restore();
+    }
+  }
+
+  function webDraw(){for(const s of webShots){for(let i=1;i<s.trail.length;i++){g.strokeStyle='rgba(220,249,255,'+(i/s.trail.length)+')';g.lineWidth=4;g.beginPath();g.moveTo(s.trail[i-1].x-camX,s.trail[i-1].y);g.lineTo(s.trail[i].x-camX,s.trail[i].y);g.stroke()}g.strokeStyle='#fff';g.lineWidth=3;g.beginPath();g.arc(s.x-camX,s.y,7,0,7);g.stroke();for(let k=0;k<4;k++){const a=k*Math.PI/2;g.beginPath();g.moveTo(s.x-camX,s.y);g.lineTo(s.x-camX+Math.cos(a)*10,s.y+Math.sin(a)*10);g.stroke()}}for(const b of bursts){const r=6+(18-b.life)*1.4;g.save();g.translate(b.x-camX,b.y);g.strokeStyle=(b.type==='bite'||b.type==='biteMiss')?'#ffe14f':(b.type==='enemyShot'?'#f06a3a':'#fff');g.lineWidth=4;for(let i=0;i<6;i++){const a=i*Math.PI/3;g.beginPath();g.moveTo(0,0);g.lineTo(Math.cos(a)*r,Math.sin(a)*r);g.stroke()}g.restore()}}
   function drawDust(){for(const d of dust){g.globalAlpha=d.life/18;g.fillStyle='#eee7d8';g.beginPath();g.arc(d.x-camX,d.y,d.r,0,7);g.fill()}g.globalAlpha=1}
   function scentTrail(){if(!sniffTimer||finalChase)return;const target=pickups.find(function(p){return p.type==='clue'&&!p.got&&p.revealed});if(!target)return;g.strokeStyle='#1d252c';g.lineWidth=14;g.setLineDash([10,20]);g.beginPath();g.moveTo(dog.x-camX+30,dog.y+34);g.quadraticCurveTo((dog.x+target.x)/2-camX,target.y-90,target.x-camX,target.y);g.stroke();g.strokeStyle='#ffd84e';g.lineWidth=7;g.stroke();g.setLineDash([]);for(let i=1;i<=7;i++){const f=i/8,sx=dog.x-camX+30,sy=dog.y+34,cx=(dog.x+target.x)/2-camX,cy=target.y-90,tx=target.x-camX,ty=target.y,px=(1-f)*(1-f)*sx+2*(1-f)*f*cx+f*f*tx,py=(1-f)*(1-f)*sy+2*(1-f)*f*cy+f*f*ty;g.fillStyle='#ffd84e';g.beginPath();g.arc(px,py,7+Math.sin(t*.15+i)*2,0,7);g.fill()}}
   function finalArrow(){if(!finalChase||finished)return;const a=active(),right=goal.x>a.x,x=right?W-64:64;g.save();g.translate(x,95);g.fillStyle='#ffe14f';g.strokeStyle='#111';g.lineWidth=4;g.beginPath();if(right){g.moveTo(26,0);g.lineTo(-16,-24);g.lineTo(-16,24)}else{g.moveTo(-26,0);g.lineTo(16,-24);g.lineTo(16,24)}g.closePath();g.fill();g.stroke();g.fillStyle='#111';g.font='bold 12px sans-serif';g.textAlign='center';g.fillText('THIEF',0,48);g.restore();g.textAlign='left'}
 
-  function render(){t++;background();platforms.forEach(function(p,i){rooftop(p,i)});pickups.forEach(function(p){if(p.got||!p.revealed)return;const x=p.x-camX;if(p.type==='coin')crownCoin(x,p.y);else{g.save();g.translate(x,p.y);g.rotate(-.08);g.fillStyle='#22b9ee';g.strokeStyle='#153b55';g.lineWidth=3;g.fillRect(-17,-24,34,48);g.strokeRect(-17,-24,34,48);g.fillStyle='#fff';g.font='bold 10px sans-serif';g.textAlign='center';g.fillText('CLUE!',0,-3);g.fillStyle='#17334a';g.beginPath();g.arc(0,11,4,0,7);g.fill();g.restore();g.textAlign='left'}});enemies.forEach(function(e){if(e.alive)enemyDraw(e)});thiefDraw();missionGoalDraw();dogDraw();wadeDraw();webDraw();drawDust();scentTrail();finalArrow();const a=active();g.strokeStyle='#ffe14f';g.lineWidth=5;g.beginPath();g.ellipse(a.x-camX+a.w/2,a.y+a.h+8,35,10,0,0,7);g.stroke();g.fillStyle='#ffe14f';g.beginPath();g.moveTo(a.x-camX+a.w/2,a.y-20);g.lineTo(a.x-camX+a.w/2-10,a.y-37);g.lineTo(a.x-camX+a.w/2+10,a.y-37);g.closePath();g.fill()}
+  function render(){t++;background();platforms.forEach(function(p,i){rooftop(p,i)});pickups.forEach(function(p){if(p.got||!p.revealed)return;const x=p.x-camX;if(p.type==='coin')crownCoin(x,p.y);else{g.save();g.translate(x,p.y);g.rotate(-.08);g.fillStyle='#22b9ee';g.strokeStyle='#153b55';g.lineWidth=3;g.fillRect(-17,-24,34,48);g.strokeRect(-17,-24,34,48);g.fillStyle='#fff';g.font='bold 10px sans-serif';g.textAlign='center';g.fillText('CLUE!',0,-3);g.fillStyle='#17334a';g.beginPath();g.arc(0,11,4,0,7);g.fill();g.restore();g.textAlign='left'}});enemies.forEach(function(e){if(e.alive)enemyDraw(e)});enemyShotsDraw();thiefDraw();missionGoalDraw();dogDraw();wadeDraw();webDraw();drawDust();scentTrail();finalArrow();const a=active();g.strokeStyle='#ffe14f';g.lineWidth=5;g.beginPath();g.ellipse(a.x-camX+a.w/2,a.y+a.h+8,35,10,0,0,7);g.stroke();g.fillStyle='#ffe14f';g.beginPath();g.moveTo(a.x-camX+a.w/2,a.y-20);g.lineTo(a.x-camX+a.w/2-10,a.y-37);g.lineTo(a.x-camX+a.w/2+10,a.y-37);g.closePath();g.fill()}
   function loop(){update();if(!UI.classList.contains('hidden'))render();requestAnimationFrame(loop)}
   function hold(el,k){
     el.addEventListener('pointerdown',function(e){e.preventDefault();keys[k]=1;try{el.setPointerCapture(e.pointerId)}catch(_){}},{passive:false});
