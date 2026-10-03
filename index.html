@@ -210,12 +210,30 @@
     el.addEventListener('selectstart',function(e){e.preventDefault()});
   }
 
+  function bindAction(el,fn){
+    if(window.PointerEvent){
+      el.addEventListener('pointerdown',function(e){
+        e.preventDefault();
+        fn();
+      },{passive:false});
+    }else{
+      el.addEventListener('touchstart',function(e){
+        e.preventDefault();
+        fn();
+      },{passive:false});
+    }
+    el.addEventListener('click',function(e){e.preventDefault()});
+  }
+
   hold(document.getElementById('left'),'left');hold(document.getElementById('right'),'right');
   document.querySelectorAll('button').forEach(function(b){
     b.addEventListener('contextmenu',function(e){e.preventDefault()});
     b.addEventListener('selectstart',function(e){e.preventDefault()});
   });
-  document.getElementById('jump').addEventListener('click',jump);document.getElementById('ability').addEventListener('click',ability);document.getElementById('attack').addEventListener('click',attack);document.getElementById('switchHero').addEventListener('click',switchHero);
+  bindAction(document.getElementById('jump'),jump);
+  bindAction(document.getElementById('ability'),ability);
+  bindAction(document.getElementById('attack'),attack);
+  bindAction(document.getElementById('switchHero'),switchHero);
   document.querySelectorAll('[data-mission]').forEach(function(b){b.addEventListener('click',function(){setup(+b.dataset.mission)})});
   document.getElementById('missionMenu').addEventListener('click',function(){UI.classList.add('hidden');menu.classList.remove('hidden')});
   document.getElementById('chooseMission').addEventListener('click',function(){UI.classList.add('hidden');menu.classList.remove('hidden')});
